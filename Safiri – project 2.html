@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Safiri | Bus Ticket Booking</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%9A%8C%3C/text%3E%3C/svg%3E">
+<style>
+:root { box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+/* Safiri Bus Booking - main stylesheet
+   Colours are CSS variables so light/dark themes only change them here. */
+:root {
+  --bg: #0f172a; --bg2: #162033; --card: #1e293b;
+  --text: #f1f5f9; --muted: #94a3b8; --primary: #22d3a0; --on-primary: #04281f;
+  --border: #334155; --booked: #475569; --warn: #fbbf24; --error: #f87171;
+}
+:root[data-theme="light"] {
+  --bg: #f1f5f9; --bg2: #e2e8f0; --card: #ffffff;
+  --text: #0f172a; --muted: #64748b; --primary: #059669; --on-primary: #ffffff;
+  --border: #cbd5e1; --booked: #cbd5e1; --warn: #b45309; --error: #dc2626;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 640px; margin: 0 auto; padding: 16px; }
+a { color: inherit; text-decoration: none; }
+
+/* Header */
+.site-header { display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; background: var(--bg2); border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 5; }
+.logo { font-size: 20px; font-weight: 700; color: var(--primary); }
+.icon-btn { background: var(--card); color: var(--text); border: 1px solid var(--border);
+  border-radius: 20px; padding: 6px 12px; cursor: pointer; }
+#timer { color: var(--warn); font-weight: 700; margin-right: 10px; }
+
+/* Cards, text helpers */
+.card { background: var(--card); border: 1px solid var(--border);
+  border-radius: 16px; padding: 16px; margin-bottom: 12px; }
+.row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.muted { color: var(--muted); font-size: 13px; }
+.price { font-weight: 800; font-size: 18px; color: var(--primary); }
+.hero { padding: 28px 18px; border-radius: 20px; margin-bottom: 14px; border: 1px solid var(--border);
+  background: radial-gradient(circle at 80% 0, rgba(34,211,160,.25), transparent 60%), var(--card); }
+.hero h1 { margin: 0 0 8px; font-size: 28px; line-height: 1.15; }
+
+/* Progress bar (5 steps) */
+.steps { display: flex; gap: 4px; margin-bottom: 14px; }
+.steps i { flex: 1; height: 4px; border-radius: 2px; background: var(--border); }
+.steps i.on { background: var(--primary); }
+
+/* Forms */
+label { display: block; font-size: 12px; color: var(--muted); margin: 12px 0 4px;
+  text-transform: uppercase; letter-spacing: .5px; }
+input, select { width: 100%; padding: 12px; font-size: 16px; color: var(--text);
+  background: var(--bg); border: 1px solid var(--border); border-radius: 12px; }
+input.invalid { border-color: var(--error); }
+.error-text { color: var(--error); font-size: 13px; min-height: 16px; margin-top: 8px; }
+
+/* Buttons and chips */
+.btn { display: block; width: 100%; margin-top: 12px; padding: 14px; text-align: center;
+  border: 0; border-radius: 12px; background: var(--primary); color: var(--on-primary);
+  font-size: 16px; font-weight: 700; cursor: pointer; }
+.btn:disabled { opacity: .35; cursor: not-allowed; }
+.btn.secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.chip { padding: 7px 12px; border-radius: 20px; border: 1px solid var(--border);
+  background: var(--card); color: var(--text); font-size: 13px; cursor: pointer; }
+.chip.on { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+
+/* Bus cards */
+.bus-card { cursor: pointer; }
+.bus-card:hover { border-color: var(--primary); }
+.tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; border: 1px solid var(--border); color: var(--muted); }
+.low { color: var(--warn); font-size: 12px; font-weight: 600; }
+.bar { height: 6px; border-radius: 3px; background: var(--bg); margin-top: 8px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--primary); }
+
+/* Seat map: 5 columns = 2 seats + aisle + 2 seats */
+.bus-body { display: grid; grid-template-columns: repeat(2, 1fr) 24px repeat(2, 1fr); gap: 7px;
+  max-width: 290px; margin: 12px auto; padding: 14px; border: 2px solid var(--border);
+  border-radius: 30px 30px 14px 14px; }
+.seat { aspect-ratio: 1; border-radius: 8px 8px 3px 3px; border: 1.5px solid var(--primary);
+  background: transparent; color: var(--text); font-size: 11px; cursor: pointer; }
+.seat.window { border-left-width: 5px; }
+.seat.front { box-shadow: inset 0 0 0 2px var(--warn); }
+.seat.booked { background: var(--booked); border-color: var(--booked); color: var(--muted); cursor: not-allowed; }
+.seat.selected { background: var(--primary); color: var(--on-primary); font-weight: 700; }
+.legend { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; font-size: 11px; color: var(--muted); }
+
+/* Ticket */
+.ticket { border: 2px dashed var(--primary); }
+.divider { border: 0; border-top: 1px dashed var(--border); margin: 12px 0; }
+canvas { background: #fff; border-radius: 8px; padding: 6px; }
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 9;
+  background: var(--primary); color: var(--on-primary); padding: 10px 18px; border-radius: 20px; font-weight: 600; }
+@media print { .site-header, .btn, .steps { display: none; } }
+
+</style>
+</head>
+<body>
+<div id="header"></div>
+<main id="app"></main>
+<script>
+const go = (name) => { location.hash = "#/" + name; };
+/* data.js - shared data, storage helpers and business rules (loaded on every page) */
+const CITIES = ["Dar es Salaam", "Morogoro", "Dodoma", "Arusha", "Mwanza", "Mbeya", "Tanga"];
+
+// depart = hour of day (24h), base = base fare in TSh, hours = trip length on a base route
+const OPERATORS = [
+  { id: 1, name: "Sunrise Express",   depart: 6,    base: 35000, type: "Luxury",      hours: 7 },
+  { id: 2, name: "Safari Coach",      depart: 9.5,  base: 28000, type: "Semi-luxury", hours: 8 },
+  { id: 3, name: "City Link",         depart: 14,   base: 25000, type: "Standard",    hours: 9 },
+  { id: 4, name: "Night Rider",       depart: 20,   base: 32000, type: "Luxury",      hours: 6.5 },
+  { id: 5, name: "Kilimanjaro Lines", depart: 11,   base: 30000, type: "Semi-luxury", hours: 7.5 },
+];
+const TOTAL_SEATS = 40, SERVICE_FEE = 1000, HOLD_SECONDS = 300, PROMO_CODE = "SAFIRI10";
+
+/* ---- Storage: sessionStorage = current booking flow, localStorage = saved data ---- */
+const Store = {
+  get(area, key, fallback) {
+    try { const v = area.getItem(key); return v ? JSON.parse(v) : fallback; }
+    catch (e) { return fallback; }
+  },
+  set(area, key, value) {
+    try { area.setItem(key, JSON.stringify(value)); } catch (e) { /* storage blocked */ }
+  },
+};
+const getTrip = () => Store.get(sessionStorage, "trip", {});
+const saveTrip = (t) => Store.set(sessionStorage, "trip", t);
+
+/* ---- Formatting ---- */
+const formatPrice = (n) => "TSh " + n.toLocaleString();
+function formatTime(h) {
+  h = h % 24;
+  return String(Math.floor(h)).padStart(2, "0") + ":" + (h % 1 ? "30" : "00");
+}
+
+/* ---- Buses: generated from operators + route distance ---- */
+function getBuses(trip) {
+  const distance = Math.abs(CITIES.indexOf(trip.from) - CITIES.indexOf(trip.to));
+  return OPERATORS.map((op) => {
+    const duration = op.hours + distance * 0.5;
+    return { id: op.id, name: op.name, type: op.type, depart: op.depart,
+             duration, arrive: op.depart + duration, price: op.base + distance * 1500 };
+  });
+}
+
+/* ---- Seats ---- */
+const tripKey = (trip, bus) => [trip.from, trip.to, trip.date, bus.id].join("|");
+
+// Pseudo-random "already booked" seats (same result every time for the same trip)
+// plus seats booked by this user (saved in localStorage).
+function getTakenSeats(trip, bus) {
+  const key = tripKey(trip, bus);
+  let seed = 0;
+  for (const ch of key) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+  const taken = new Set();
+  for (let i = 0; i < 8 + bus.id * 3; i++) {
+    seed = (seed * 1103515245 + 12345) >>> 0;
+    taken.add((seed >> 8) % TOTAL_SEATS + 1);
+  }
+  (Store.get(localStorage, "taken", {})[key] || []).forEach((s) => taken.add(s));
+  return taken;
+}
+
+// Window seats +2,000; front row (extra legroom) +3,000
+function seatExtra(n) {
+  const row = Math.floor((n - 1) / 4), col = (n - 1) % 4;
+  return (col === 0 || col === 3 ? 2000 : 0) + (row === 0 ? 3000 : 0);
+}
+
+function calcPrice(trip, bus) {
+  const fare = (trip.seats || []).reduce((sum, n) => sum + bus.price + seatExtra(n), 0);
+  const fee = SERVICE_FEE * (trip.seats || []).length;
+  const discount = trip.promo ? Math.round(fare * 0.1) : 0;
+  return { fare, fee, discount, total: fare + fee - discount };
+}
+function priceSummaryHTML(p) {
+  return `<div class="row"><span>Fare and seat extras</span><span>${formatPrice(p.fare)}</span></div>
+    <div class="row"><span>Service fee</span><span>${formatPrice(p.fee)}</span></div>
+    ${p.discount ? `<div class="row"><span>Promo -10%</span><span>-${formatPrice(p.discount)}</span></div>` : ""}
+    <hr class="divider"><div class="row"><b>Total</b><span class="price">${formatPrice(p.total)}</span></div>`;
+}
+
+/* common.js - header, progress bar, theme, toast, seat hold timer (loaded on every page) */
+(function applyTheme() {
+  let saved = null; try { saved = localStorage.getItem("theme"); } catch (e) {}
+  const light = window.matchMedia("(prefers-color-scheme: light)").matches;
+  document.documentElement.dataset.theme = saved || (light ? "light" : "dark");
+})();
+
+function renderHeader() {
+  document.getElementById("header").innerHTML = `
+    <header class="site-header">
+      <a class="logo" href="#/index">🚌 Safiri</a>
+      <span><span id="timer"></span><button class="icon-btn" id="themeBtn" title="Toggle theme">◐</button></span>
+    </header>`;
+  document.getElementById("themeBtn").onclick = () => {
+    const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem("theme", next); } catch (e) {}
+  };
+}
+
+function renderSteps(n) {
+  const el = document.getElementById("steps");
+  if (el) el.innerHTML = [1, 2, 3, 4, 5].map((i) => `<i class="${i <= n ? "on" : ""}"></i>`).join("");
+}
+
+function toast(message) {
+  const t = document.createElement("div");
+  t.className = "toast"; t.textContent = message;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2200);
+}
+
+// Redirect to the search page if required trip data is missing (e.g. page opened directly)
+function requireTrip(fields) {
+  const trip = getTrip();
+  if (!fields.every((f) => trip[f] !== undefined && trip[f] !== "")) {
+    go("search");
+  }
+  return trip;
+}
+
+// 5-minute seat hold countdown; when it ends the seats are released
+function startHoldTimer() {
+  const el = document.getElementById("timer");
+  const tick = () => {
+    const trip = getTrip();
+    if (!trip.holdUntil) return;
+    const left = Math.round((trip.holdUntil - Date.now()) / 1000);
+    if (left <= 0) {
+      trip.seats = []; trip.holdUntil = 0; saveTrip(trip);
+      alert("Your seat hold expired. Please choose a bus again.");
+      go("buses");
+      return;
+    }
+    el.textContent = "⏱ " + Math.floor(left / 60) + ":" + String(left % 60).padStart(2, "0");
+  };
+  tick(); setInterval(tick, 1000);
+}
+renderHeader();
+
+</script>
+<script>
+const TEMPLATES = {"index": "<div id=\"steps\" class=\"steps\"></div>\n    <section class=\"hero\">\n      <h1>Travel smarter.<br>Pick your seat.</h1>\n      <p class=\"muted\">Compare buses, choose your seat and get a ticket in seconds.</p>\n      <a class=\"btn\" href=\"#/search\">Search a trip</a>\n    </section>\n    <section class=\"card\"><b>Popular routes</b><div class=\"chips\" id=\"routes\"></div></section>\n    <section class=\"card\"><b>How it works</b>\n      <p class=\"muted\">1 Search \u00b7 2 Choose a bus \u00b7 3 Pick seats \u00b7 4 Enter details \u00b7 5 Get your ticket</p></section>", "search": "<div id=\"steps\" class=\"steps\"></div>\n    <form id=\"searchForm\" class=\"card\" novalidate>\n      <h2 style=\"margin-top:0\">Where to?</h2>\n      <label for=\"from\">From</label><select id=\"from\"></select>\n      <button type=\"button\" class=\"chip\" id=\"swap\" style=\"margin-top:10px\">\u21c5 Swap</button>\n      <label for=\"to\">To</label><select id=\"to\"></select>\n      <label for=\"date\">Travel date</label><input type=\"date\" id=\"date\">\n      <label for=\"pax\">Passengers</label>\n      <select id=\"pax\"><option>1</option><option>2</option><option>3</option><option>4</option></select>\n      <div class=\"error-text\" id=\"error\"></div>\n      <button class=\"btn\" type=\"submit\">Find buses</button>\n    </form>", "buses": "<div id=\"steps\" class=\"steps\"></div>\n    <div class=\"card\"><b id=\"route\"></b><div class=\"muted\" id=\"meta\"></div></div>\n    <div class=\"chips\" id=\"filters\"></div>\n    <div id=\"list\"></div>\n    <a class=\"btn secondary\" href=\"#/search\">Change search</a>", "seats": "<div id=\"steps\" class=\"steps\"></div>\n    <div class=\"card\" id=\"busInfo\"></div>\n    <div class=\"card\"><b id=\"seatTitle\"></b>\n      <div class=\"bus-body\" id=\"seatMap\"></div>\n      <div class=\"legend\"><span>\u258c Window +2,000</span><span>\ud83d\udfe8 Front legroom +3,000</span><span>\u25a0 Booked</span></div></div>\n    <div class=\"card row\"><span id=\"chosen\"></span><b id=\"subtotal\"></b></div>\n    <button class=\"btn\" id=\"next\" disabled>Continue</button>\n    <a class=\"btn secondary\" href=\"#/buses\">Back</a>", "booking": "<div id=\"steps\" class=\"steps\"></div>\n    <form id=\"bookingForm\" novalidate>\n      <div class=\"card\"><h2 style=\"margin-top:0\">Passenger details</h2>\n        <div id=\"names\"></div>\n        <label for=\"phone\">Phone</label><input id=\"phone\" type=\"tel\" placeholder=\"0712345678\">\n        <label for=\"email\">Email</label><input id=\"email\" type=\"email\" placeholder=\"you@example.com\">\n        <label for=\"payment\">Payment method</label>\n        <select id=\"payment\"><option>Mobile money</option><option>Card</option><option>Pay at station</option></select>\n        <label for=\"promo\">Promo code</label>\n        <div class=\"row\"><input id=\"promo\" placeholder=\"Try SAFIRI10\"><button type=\"button\" class=\"chip\" id=\"applyPromo\">Apply</button></div>\n      </div>\n      <div class=\"card\" id=\"summary\"></div>\n      <div class=\"error-text\" id=\"error\"></div>\n      <button class=\"btn\" type=\"submit\">Pay and confirm</button>\n      <a class=\"btn secondary\" href=\"#/seats\">Back</a>\n    </form>", "ticket": "<div id=\"steps\" class=\"steps\"></div>\n    <div id=\"ticket\"></div>\n    <button class=\"btn\" onclick=\"window.print()\">Print ticket</button>\n    <button class=\"btn secondary\" id=\"cancel\">Cancel this booking</button>\n    <a class=\"btn secondary\" href=\"#/index\">Book another trip</a>"};
+const TITLES = {"index": "Home", "search": "Search trip", "buses": "Available buses", "seats": "Select seat", "booking": "Booking form", "ticket": "Ticket"};
+const pages = {};
+pages.index = function(){
+/* home.js - popular route shortcuts */
+const POPULAR = [["Dar es Salaam", "Arusha"], ["Dar es Salaam", "Mbeya"], ["Dodoma", "Mwanza"], ["Arusha", "Tanga"]];
+const routesEl = document.getElementById("routes");
+POPULAR.forEach(([from, to]) => {
+  const chip = document.createElement("span");
+  chip.className = "chip"; chip.textContent = from + " → " + to;
+  chip.onclick = () => { saveTrip({ ...getTrip(), from, to }); go("search"); };
+  routesEl.appendChild(chip);
+});
+
+
+};
+pages.search = function(){
+/* search.js - trip search form with validation */
+renderSteps(1);
+const trip0 = getTrip();
+const fromEl = document.getElementById("from"), toEl = document.getElementById("to");
+const dateEl = document.getElementById("date"), paxEl = document.getElementById("pax");
+const errorEl = document.getElementById("error");
+
+[fromEl, toEl].forEach((sel, i) => {
+  sel.innerHTML = `<option value="">Select ${i ? "destination" : "origin"}</option>` +
+    CITIES.map((c) => `<option>${c}</option>`).join("");
+});
+fromEl.value = trip0.from || ""; toEl.value = trip0.to || "";
+paxEl.value = trip0.passengers || 1;
+dateEl.min = new Date().toISOString().slice(0, 10);   // no past dates
+dateEl.value = trip0.date || "";
+
+document.getElementById("swap").onclick = () => {
+  [fromEl.value, toEl.value] = [toEl.value, fromEl.value];
+};
+
+document.getElementById("searchForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  let msg = "";
+  if (!fromEl.value || !toEl.value) msg = "Choose both origin and destination.";
+  else if (fromEl.value === toEl.value) msg = "Origin and destination must be different.";
+  else if (!dateEl.value) msg = "Pick a travel date.";
+  else if (dateEl.value < dateEl.min) msg = "The date cannot be in the past.";
+  errorEl.textContent = msg;
+  if (msg) return;
+  saveTrip({ from: fromEl.value, to: toEl.value, date: dateEl.value,
+             passengers: +paxEl.value, seats: [], promo: false });
+  go("buses");
+});
+
+
+};
+pages.buses = function(){
+/* buses.js - available buses with sorting and filtering */
+renderSteps(2);
+const trip = requireTrip(["from", "to", "date"]);
+let sortBy = "price", luxuryOnly = false;
+
+document.getElementById("route").textContent = trip.from + " → " + trip.to;
+document.getElementById("meta").textContent = trip.date + " · " + trip.passengers + " passenger(s)";
+
+function render() {
+  const sorters = { price: (a, b) => a.price - b.price, duration: (a, b) => a.duration - b.duration,
+                    depart: (a, b) => a.depart - b.depart };
+  let buses = getBuses(trip);
+  if (luxuryOnly) buses = buses.filter((b) => b.type === "Luxury");
+  buses.sort(sorters[sortBy]);
+
+  const chip = (label, on, action) => `<span class="chip ${on ? "on" : ""}" onclick="${action}">${label}</span>`;
+  document.getElementById("filters").innerHTML =
+    chip("Cheapest", sortBy === "price", "setSort('price')") +
+    chip("Fastest", sortBy === "duration", "setSort('duration')") +
+    chip("Earliest", sortBy === "depart", "setSort('depart')") +
+    chip("Luxury only", luxuryOnly, "toggleLuxury()");
+
+  document.getElementById("list").innerHTML = buses.map((b) => {
+    const left = TOTAL_SEATS - getTakenSeats(trip, b).size;
+    return `<div class="card bus-card" onclick="chooseBus(${b.id})">
+      <div class="row"><b>${b.name}</b><span class="price">${formatPrice(b.price)}</span></div>
+      <div class="row muted"><span>${formatTime(b.depart)} → ${formatTime(b.arrive)} · ${b.duration}h</span><span class="tag">${b.type}</span></div>
+      <div class="row"><span class="muted">${left} seats left</span>${left < 10 ? '<span class="low">Almost full!</span>' : ""}</div>
+      <div class="bar"><i style="width:${(left / TOTAL_SEATS) * 100}%"></i></div></div>`;
+  }).join("") || '<div class="card muted">No buses match your filter.</div>';
+}
+const setSort = (s) => { sortBy = s; render(); };
+const toggleLuxury = () => { luxuryOnly = !luxuryOnly; render(); };
+function chooseBus(id) {
+  trip.busId = id; trip.seats = []; trip.promo = false;
+  trip.holdUntil = Date.now() + HOLD_SECONDS * 1000;   // start the 5-minute hold
+  saveTrip(trip);
+  go("seats");
+}
+render();
+
+window.setSort=setSort;window.toggleLuxury=toggleLuxury;window.chooseBus=chooseBus;
+};
+pages.seats = function(){
+/* seats.js - bus details and seat selection */
+renderSteps(3); startHoldTimer();
+const trip = requireTrip(["from", "to", "date", "busId"]);
+const bus = getBuses(trip).find((b) => b.id === trip.busId);
+const taken = getTakenSeats(trip, bus);
+trip.seats = trip.seats || [];
+
+document.getElementById("busInfo").innerHTML =
+  `<div class="row"><b>${bus.name}</b><span class="price">${formatPrice(bus.price)}</span></div>
+   <div class="muted">${bus.type} · departs ${formatTime(bus.depart)} · A/C · charging ports · WiFi</div>`;
+document.getElementById("seatTitle").textContent = `Pick ${trip.passengers} seat(s)`;
+
+function render() {
+  let html = "";
+  for (let n = 1; n <= TOTAL_SEATS; n++) {
+    const col = (n - 1) % 4, row = Math.floor((n - 1) / 4);
+    if (col === 2) html += "<span></span>";               // aisle gap after 2nd seat
+    const cls = ["seat", col === 0 || col === 3 ? "window" : "", row === 0 ? "front" : "",
+                 taken.has(n) ? "booked" : "", trip.seats.includes(n) ? "selected" : ""].join(" ");
+    html += `<button class="${cls}" ${taken.has(n) ? "disabled" : ""} onclick="toggleSeat(${n})">${n}</button>`;
+  }
+  // grid is 5 columns: seat, seat, aisle, seat, seat
+  document.getElementById("seatMap").innerHTML = html;
+  document.getElementById("chosen").innerHTML = "Seats: <b>" + (trip.seats.join(", ") || "none") + "</b>";
+  document.getElementById("subtotal").textContent = formatPrice(calcPrice(trip, bus).fare);
+  document.getElementById("next").disabled = trip.seats.length !== trip.passengers;
+}
+function toggleSeat(n) {
+  const i = trip.seats.indexOf(n);
+  if (i > -1) trip.seats.splice(i, 1);
+  else { if (trip.seats.length >= trip.passengers) trip.seats.shift(); trip.seats.push(n); }
+  saveTrip(trip); render();
+}
+document.getElementById("next").onclick = () => { go("booking"); };
+render();
+
+window.toggleSeat=toggleSeat;
+};
+pages.booking = function(){
+/* booking.js - booking form, validation, price summary, saving the booking */
+renderSteps(4); startHoldTimer();
+const trip = requireTrip(["from", "to", "date", "busId"]);
+if (!trip.seats || trip.seats.length === 0) go("seats");
+const bus = getBuses(trip).find((b) => b.id === trip.busId);
+const errorEl = document.getElementById("error");
+
+document.getElementById("names").innerHTML = trip.seats.map((s, i) =>
+  `<label>Passenger ${i + 1} · seat ${s}</label><input class="name" placeholder="Full name">`).join("");
+const updateSummary = () => { document.getElementById("summary").innerHTML = priceSummaryHTML(calcPrice(trip, bus)); };
+updateSummary();
+
+document.getElementById("applyPromo").onclick = () => {
+  const ok = document.getElementById("promo").value.trim().toUpperCase() === PROMO_CODE;
+  trip.promo = ok; saveTrip(trip); updateSummary();
+  toast(ok ? "10% discount applied" : "Invalid promo code");
+};
+
+// Mark an input valid/invalid and return whether it is valid
+function check(input, valid) { input.classList.toggle("invalid", !valid); return valid; }
+
+document.getElementById("bookingForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const names = [...document.querySelectorAll(".name")];
+  const phone = document.getElementById("phone"), email = document.getElementById("email");
+  let ok = true;
+  names.forEach((n) => { ok = check(n, n.value.trim().length >= 3) && ok; });
+  ok = check(phone, /^0\d{9}$/.test(phone.value.trim())) && ok;
+  ok = check(email, /^\S+@\S+\.\S+$/.test(email.value.trim())) && ok;
+  errorEl.textContent = ok ? "" : "Please fix the highlighted fields (name 3+ letters, phone 10 digits starting with 0, valid email).";
+  if (!ok) return;
+
+  const booking = {
+    id: "SF" + Math.floor(100000 + Math.random() * 900000),
+    from: trip.from, to: trip.to, date: trip.date, bus: bus.name, depart: bus.depart,
+    seats: [...trip.seats], names: names.map((n) => n.value.trim()),
+    phone: phone.value.trim(), payment: document.getElementById("payment").value,
+    price: calcPrice(trip, bus), key: tripKey(trip, bus),
+  };
+  // Save booking + mark its seats as taken so nobody else can pick them
+  const bookings = Store.get(localStorage, "bookings", []); bookings.push(booking);
+  Store.set(localStorage, "bookings", bookings);
+  const takenMap = Store.get(localStorage, "taken", {});
+  takenMap[booking.key] = (takenMap[booking.key] || []).concat(booking.seats);
+  Store.set(localStorage, "taken", takenMap);
+  Store.set(sessionStorage, "lastBooking", booking.id);
+  trip.holdUntil = 0; saveTrip(trip);
+  go("ticket");
+});
+
+
+};
+pages.ticket = function(){
+/* ticket.js - ticket confirmation, decorative QR code, cancellation */
+renderSteps(5);
+const id = Store.get(sessionStorage, "lastBooking", null);
+const bookings = Store.get(localStorage, "bookings", []);
+const b = bookings.find((x) => x.id === id);
+if (!b) go("index");
+
+document.getElementById("ticket").innerHTML = `<div class="card ticket">
+  <div class="row"><b style="color:var(--primary)">✔ Booking confirmed</b><span class="muted">${b.id}</span></div>
+  <h3 style="margin:10px 0 2px">${b.from} → ${b.to}</h3>
+  <div class="muted">${b.date} · departs ${formatTime(b.depart)} · ${b.bus}</div><hr class="divider">
+  ${b.names.map((n, i) => `<div class="row"><span>${n}</span><b>Seat ${b.seats[i]}</b></div>`).join("")}
+  <hr class="divider">${priceSummaryHTML(b.price)}
+  <div class="row" style="margin-top:12px"><span class="muted">${b.payment}<br>${b.phone}<br>Show this QR when boarding</span>
+  <canvas id="qr" width="100" height="100"></canvas></div></div>`;
+
+// Decorative QR-style pattern generated from the booking ID (not a real scannable QR)
+(function drawQR() {
+  const g = document.getElementById("qr").getContext("2d"), N = 25, z = 4;
+  let h = 0; for (const ch of b.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  g.fillStyle = "#fff"; g.fillRect(0, 0, 100, 100); g.fillStyle = "#000";
+  const finder = (x, y) => {
+    g.fillRect(x * z, y * z, 7 * z, 7 * z); g.fillStyle = "#fff";
+    g.fillRect((x + 1) * z, (y + 1) * z, 5 * z, 5 * z); g.fillStyle = "#000";
+    g.fillRect((x + 2) * z, (y + 2) * z, 3 * z, 3 * z);
+  };
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    if ((x < 8 && y < 8) || (x > 16 && y < 8) || (x < 8 && y > 16)) continue;
+    h = (h * 1103515245 + 12345) >>> 0;
+    if ((h >> 16) & 1) g.fillRect(x * z, y * z, z, z);
+  }
+  finder(0, 0); finder(18, 0); finder(0, 18);
+})();
+
+document.getElementById("cancel").onclick = () => {
+  if (!confirm("Cancel this booking?")) return;
+  const takenMap = Store.get(localStorage, "taken", {});
+  takenMap[b.key] = (takenMap[b.key] || []).filter((s) => !b.seats.includes(s));
+  Store.set(localStorage, "taken", takenMap);
+  Store.set(localStorage, "bookings", bookings.filter((x) => x.id !== b.id));
+  go("index");
+};
+
+
+};
+// --- tiny hash router ---
+let intervals = [];
+const _setInterval = window.setInterval.bind(window);
+window.setInterval = (...a) => { const id = _setInterval(...a); intervals.push(id); return id; };
+function route() {
+  intervals.forEach(clearInterval); intervals = [];
+  const t = document.getElementById("timer"); if (t) t.textContent = "";
+  let name = (location.hash.replace(/^#\/?/, "") || "index");
+  if (!pages[name]) name = "index";
+  document.title = TITLES[name] + " | Safiri";
+  document.getElementById("app").innerHTML = TEMPLATES[name];
+  window.scrollTo(0, 0);
+  try { pages[name](); } catch (e) { /* page redirected away before finishing */ }
+}
+window.addEventListener("hashchange", route);
+route();
+</script>
+</body>
+</html>
